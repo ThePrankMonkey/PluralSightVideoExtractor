@@ -1,0 +1,142 @@
+// ==UserScript==
+// @name         Grab PluralSight Videos
+// @namespace    http://tampermonkey.net/
+// @version      0.2
+// @description  Adds a control bar to the top of the page, click update button to get a link and title for the current video if it isn't automatically updating.
+// @author       You
+// @match        https://app.pluralsight.com/player?course=*
+// @grant        none
+// ==/UserScript==
+
+// Repeatedly runs the script to update the control bar with new information.
+window.setTimeout(window.setInterval(updateControl, 500), 5000);
+
+/*
+// This code is an attempt to intelligently only update the control bar when a different video is started.
+// It currently does not work as intended.
+
+window.setTimeout(addListeners, 5000);
+
+function addListeners(){
+    // Adds listeners to all of the lessons to update the control bar when they become active.
+    console.log('updator test 1');
+    var clips = document.getElementsByClassName('clips');
+    for (var i = 0; i< clips.length; i++){
+        var videos = clips[i].childNodes;
+        for (var j = 0; j< videos.length; j++){
+            //videos[j].addEventListener("change", updateControl);
+            videos[j].onfocus = updateControl;
+            console.log(videos[j]);
+        }
+    }
+    console.log('updator test 2');
+}
+*/
+
+/*
+   Page Elements
+*/
+
+// Builds the web elements for the control bar
+var alertElem = document.createElement('div');
+    alertElem.style = 'background-color: lightblue; position: fixed; left: 0px; top: 0px; display: ; z-index: 99999999999; padding: 2px;';
+    alertElem.id = alertElem;
+var alertElemButton = document.createElement('input');
+    alertElemButton.id = 'alertElemButton';
+    alertElemButton.value = 'Update';
+    alertElemButton.type = 'button';
+    alertElemButton.onclick = updateControl;
+    alertElemButton.title = 'Press me to update the control bar';
+var alertElemLink = document.createElement('a');
+    alertElemLink.id = 'alertElemLink';
+    alertElemLink.innerHTML = 'Click For Video';
+    alertElemLink.title = 'Clicking me will download the current lesson\'s video.';
+var alertElemFolder = document.createElement('input');
+    alertElemFolder.id = 'alertElemFolder';
+    alertElemFolder.title = 'I am the folder name.';
+var alertElemTitle = document.createElement('input');
+    alertElemTitle.id = 'alertElemTitle';
+    alertElemTitle.style = 'text-align: right;';
+    alertElemTitle.title = 'I am the filename.';
+var alertElemSpan = document.createElement('span');
+    alertElemSpan.id = 'alertElemSpan';
+    alertElemSpan.title = 'I am the current lesson';
+
+// Implements the web elements
+document.body.appendChild(alertElem);
+alertElem.appendChild(alertElemButton);
+alertElem.appendChild(alertElemLink);
+alertElem.appendChild(alertElemFolder);
+alertElem.appendChild(alertElemTitle);
+alertElem.appendChild(alertElemSpan);
+
+
+
+/*
+   Functions
+*/
+
+function sectionNum(){
+    // Returns the index number of the current Module that is open.
+    // Index begins at 01.
+    var sections = document.getElementsByClassName('module');
+    for (var i = 0; i < sections.length; i++){
+        if (sections[i].className == 'module open'){
+            return ('0'+(i+1)).slice(-2);
+        }
+    }
+}
+
+function stepNum(){
+    // Returns the index number of the current Lesson from the Module that is open.
+    // Index begins at 01.
+    var steps = document.getElementsByClassName('module open')[0].getElementsByTagName('li');
+    for (var i = 0; i < steps.length; i++){
+        if (steps[i].className == 'selected watched'){
+            return ('0'+(i+1)).slice(-2);
+        }
+    }
+}
+
+function updateControl(){
+    // Updates the control bar with current lesson's information and links.
+    //console.log('test');
+    try{
+    var course = document.getElementById('course-title').childNodes[0].innerHTML;
+    var module = document.getElementById('module-title').innerHTML.substring(0, document.getElementById('module-title').innerHTML.length-2);
+    var title = document.getElementById('clip-title').innerHTML;
+    var name = 'PluralSight - ' + course + ' - ' + sectionNum() + ' ' + module + ' ' + stepNum() + ' (' + title + ')';
+        name = name.replace(/:/g,'');
+    var link = document.getElementsByTagName('video')[0].src;
+    var ext = link.substring(link.lastIndexOf('.'), link.length);
+    if (ext.indexOf('.mp4?') > -1){
+        ext = ext.substring(0, ext.lastIndexOf('?'));
+        console.log('edited to:', ext);
+    }
+    console.log(name);
+    console.log(link);
+    // The following code is used to only overwrite the data on a change so fields can be copied.
+        var alertElemFolderContentOld = document.getElementById('alertElemFolder').value;
+        var alertElemFolderContentNew = sectionNum() + ' ' + module;
+        if (alertElemFolderContentOld != alertElemFolderContentNew){
+            document.getElementById('alertElemFolder').value = alertElemFolderContentNew;
+        }
+    //document.getElementById('alertElemFolder').value = sectionNum() + ' ' + module; // old code, would constantly rewrite.
+    // The following code is used to only overwrite the data on a change so fields can be copied.
+        var alertElemTitleOld = document.getElementById('alertElemTitle').value;
+        var alertElemTitleNew = name;
+        if (alertElemTitleOld != alertElemTitleNew){
+            document.getElementById('alertElemTitle').value = alertElemTitleNew;
+        }
+    //document.getElementById('alertElemTitle').value = name; // old code, would constantly rewrite.
+    document.getElementById('alertElemLink').href = 'data:,' + link;
+    //document.getElementById('alertElemLink').href = link; // old code, would not rename the file correctly.
+    document.getElementById('alertElemLink').download = name + ext;
+    document.getElementById('alertElemSpan').innerHTML = title;
+    //document.getElementById('alertElemLink').click(); // old code, no longer needed as the script automatically updates.
+    }
+    catch(err){
+        console.log('unknown issue found, likely ran before the page loaded fully');
+        console.log(err);
+    }
+}
